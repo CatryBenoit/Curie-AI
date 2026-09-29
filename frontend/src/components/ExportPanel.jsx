@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import html2pdf from 'html2pdf.js';
+import { FileText, Download, Loader2 } from 'lucide-react';
 import api from '../api';
 
-function ExportPanel({ activeProjectId }) {
+function ExportPanel({ activeProjectId, projectName }) {
     const [isExporting, setIsExporting] = useState(false);
 
     const handleExport = async () => {
@@ -15,7 +16,7 @@ function ExportPanel({ activeProjectId }) {
                 if (synthRes.data && synthRes.data.report) {
                     synthesisText = synthRes.data.report;
                 }
-            } catch (e) {
+            } catch {
                 console.warn("Synthèse introuvable");
             }
 
@@ -23,7 +24,7 @@ function ExportPanel({ activeProjectId }) {
             try {
                 const chartsRes = await api.get(`/projects/${activeProjectId}/charts`);
                 if (chartsRes.data) charts = chartsRes.data;
-            } catch (e) {
+            } catch {
                 console.warn("Graphiques introuvables");
             }
 
@@ -36,7 +37,7 @@ function ExportPanel({ activeProjectId }) {
 
             let htmlContent = `
                 <h1 style="color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 10px;">Rapport de Recherche R&D</h1>
-                <p style="color: #64748b; font-size: 14px;"><strong>Projet ID :</strong> #${activeProjectId}</p>
+                <p style="color: #64748b; font-size: 14px;"><strong>Projet :</strong> ${projectName || `#${activeProjectId}`}</p>
                 <p style="color: #64748b; font-size: 14px;"><strong>Date de l'export :</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
                 
                 <h2 style="margin-top: 40px; color: #1e293b;">1. Synthèse de l'Intelligence Artificielle</h2>
@@ -99,13 +100,19 @@ function ExportPanel({ activeProjectId }) {
     };
 
     return (
-        <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px' }}>
-            <div>
-                <h3 style={{ margin: '0 0 5px 0', color: 'var(--primary)' }}>📄 Rapport Professionnel</h3>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Compilez la synthèse de l'IA et les tableaux de données dans un document PDF.</p>
+        <div className="card row row-between row-wrap" style={{ gap: 16 }}>
+            <div className="row" style={{ gap: 14, alignItems: 'flex-start' }}>
+                <div className="avatar" style={{ borderRadius: 'var(--radius)', width: 38, height: 38 }}>
+                    <FileText size={18} />
+                </div>
+                <div>
+                    <h3 className="card-title">Rapport PDF</h3>
+                    <p className="card-subtitle">Compile la synthèse de l'IA et les tableaux de données dans un document PDF.</p>
+                </div>
             </div>
-            <button onClick={handleExport} disabled={isExporting} style={{ backgroundColor: 'var(--success)', whiteSpace: 'nowrap' }}>
-                {isExporting ? 'Génération en cours...' : '📥 Télécharger en PDF'}
+            <button onClick={handleExport} disabled={isExporting} className="btn btn-secondary">
+                {isExporting ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
+                {isExporting ? 'Génération...' : 'Télécharger le PDF'}
             </button>
         </div>
     );

@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { MessageSquareText, Send, Loader2 } from 'lucide-react';
 import api from '../api';
 
 const ChatbotPanel = ({ activeProjectId }) => {
     // État pour stocker l'historique de la conversation
     const [messages, setMessages] = useState([
-        { role: 'ai', text: "👋 Bonjour ! Je suis ton assistant de recherche. Pose-moi une question et j'irai chercher la réponse **uniquement** dans les PDFs de ce projet." }
+        { role: 'ai', text: "Bonjour ! Je suis ton assistant de recherche. Pose-moi une question et j'irai chercher la réponse **uniquement** dans les PDFs de ce projet." }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +37,7 @@ const ChatbotPanel = ({ activeProjectId }) => {
             setMessages(prev => [...prev, { role: 'ai', text: res.data.answer }]);
         } catch (error) {
             console.error("Erreur Chatbot:", error);
-            setMessages(prev => [...prev, { role: 'ai', text: "❌ *Une erreur de connexion est survenue.*" }]);
+            setMessages(prev => [...prev, { role: 'ai', text: "*Une erreur de connexion est survenue.*" }]);
         } finally {
             setIsLoading(false);
         }
@@ -45,67 +46,48 @@ const ChatbotPanel = ({ activeProjectId }) => {
     if (!activeProjectId) return null;
 
     return (
-        <div className="panel" style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
-            <h3 style={{ marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                💬 Chat avec mes articles (RAG)
-            </h3>
+        <div className="card card-fill" style={{ height: 620 }}>
+            <div className="card-header" style={{ marginBottom: 8 }}>
+                <div>
+                    <h3 className="card-title"><MessageSquareText size={18} /> Questions aux articles</h3>
+                    <p className="card-subtitle">Réponses tirées uniquement des documents du projet.</p>
+                </div>
+            </div>
 
             {/* Zone d'affichage des messages */}
-            <div style={{ flexGrow: 1, overflowY: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div className="chat-scroll">
                 {messages.map((msg, index) => (
-                    <div 
-                        key={index} 
-                        style={{
-                            maxWidth: '85%',
-                            padding: '12px 16px',
-                            borderRadius: '12px',
-                            alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                            backgroundColor: msg.role === 'user' ? '#2563eb' : '#f1f5f9',
-                            color: msg.role === 'user' ? 'white' : '#1e293b',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                        }}
-                    >
+                    <div key={index} className={`bubble ${msg.role === 'user' ? 'bubble-me' : 'bubble-other'}`}>
                         {msg.role === 'user' ? (
                             msg.text
                         ) : (
-                            <div className="markdown-content" style={{ fontSize: '14px', lineHeight: '1.5' }}>
+                            <div className="markdown">
                                 <ReactMarkdown>{msg.text}</ReactMarkdown>
                             </div>
                         )}
                     </div>
                 ))}
-                
+
                 {isLoading && (
-                    <div style={{ alignSelf: 'flex-start', backgroundColor: '#f1f5f9', padding: '12px 16px', borderRadius: '12px', color: '#64748b' }}>
-                        <span className="typing-indicator">L'IA analyse les articles... 🧠</span>
+                    <div className="bubble bubble-other bubble-typing">
+                        <Loader2 size={14} className="spin" /> Analyse des articles…
                     </div>
                 )}
                 <div ref={messagesEndRef} />
             </div>
 
             {/* Barre de saisie */}
-            <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', marginTop: '15px', borderTop: '1px solid #e2e8f0', paddingTop: '15px' }}>
+            <form onSubmit={handleSend} className="chat-form">
                 <input
+                    className="input grow"
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ex: Quelles sont les limites de l'étude sur..."
-                    style={{ flexGrow: 1, padding: '10px 15px', borderRadius: '25px', border: '1px solid #cbd5e1', outline: 'none' }}
+                    placeholder="Posez une question…"
+                    aria-label="Votre question"
                 />
-                <button 
-                    type="submit" 
-                    disabled={isLoading || !input.trim()}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: (isLoading || !input.trim()) ? '#94a3b8' : '#2563eb',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '25px',
-                        cursor: (isLoading || !input.trim()) ? 'not-allowed' : 'pointer',
-                        fontWeight: 'bold'
-                    }}
-                >
-                    Envoyer
+                <button type="submit" className="btn btn-icon" style={{ padding: 9 }} disabled={isLoading || !input.trim()} aria-label="Envoyer">
+                    <Send size={16} />
                 </button>
             </form>
         </div>

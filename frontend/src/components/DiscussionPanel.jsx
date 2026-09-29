@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { MessagesSquare, Send } from 'lucide-react';
 import api from '../api';
 
 function DiscussionPanel({ activeProjectId, currentUser }) {
@@ -13,7 +14,9 @@ function DiscussionPanel({ activeProjectId, currentUser }) {
 
     // Faire défiler automatiquement vers le bas quand une note est ajoutée
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        // On fait défiler uniquement la zone des messages, pas toute la page
+        const box = messagesEndRef.current?.parentElement;
+        if (box) box.scrollTop = box.scrollHeight;
     }, [notes]);
 
     const fetchNotes = async () => {
@@ -35,6 +38,7 @@ function DiscussionPanel({ activeProjectId, currentUser }) {
             setNewNote('');
             fetchNotes(); // On recharge les notes
         } catch (err) {
+            console.error("Erreur envoi note :", err);
             alert("Erreur lors de l'envoi du message.");
         } finally {
             setIsLoading(false);
@@ -42,34 +46,31 @@ function DiscussionPanel({ activeProjectId, currentUser }) {
     };
 
     return (
-        <div className="panel" style={{ height: '500px', display: 'flex', flexDirection: 'column' }}>
-            <h3 style={{ marginTop: 0 }}>💬 Espace de discussion</h3>
-            
+        <div className="card card-fill" style={{ height: 'calc(100vh - 190px)', minHeight: 420 }}>
+            <div className="card-header">
+                <div>
+                    <h3 className="card-title"><MessagesSquare size={18} /> Fil de discussion</h3>
+                    <p className="card-subtitle">Visible par tous les membres du projet.</p>
+                </div>
+            </div>
+
             {/* Zone d'affichage des messages */}
-            <div style={{ flexGrow: 1, overflowY: 'auto', padding: '15px', backgroundColor: 'var(--bg-base)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div className="chat-scroll boxed">
                 {notes.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: 'var(--text-muted)', margin: 'auto' }}>
-                        Aucune discussion pour ce projet. Lancez le sujet !
-                    </p>
+                    <div className="empty-state">
+                        <MessagesSquare size={32} />
+                        <p className="empty-state-title">Aucune discussion pour ce projet</p>
+                        <p>Écrivez la première note à votre équipe.</p>
+                    </div>
                 ) : (
                     notes.map(note => {
                         const isMe = currentUser?.username === note.username;
                         return (
-                            <div key={note.id} style={{
-                                alignSelf: isMe ? 'flex-end' : 'flex-start',
-                                backgroundColor: isMe ? 'var(--primary)' : 'var(--bg-hover)',
-                                color: isMe ? 'white' : 'var(--text-main)',
-                                padding: '10px 15px',
-                                borderRadius: '12px',
-                                maxWidth: '80%',
-                                border: isMe ? 'none' : '1px solid var(--border)'
-                            }}>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '4px', opacity: 0.8 }}>
-                                    {note.username} • {new Date(note.created_at).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                            <div key={note.id} className={`bubble ${isMe ? 'bubble-me' : 'bubble-other'}`}>
+                                <div className="bubble-meta">
+                                    {isMe ? 'Vous' : note.username} · {new Date(note.created_at).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                                 </div>
-                                <div style={{ fontSize: '0.9rem', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
-                                    {note.content}
-                                </div>
+                                <div style={{ whiteSpace: 'pre-wrap' }}>{note.content}</div>
                             </div>
                         );
                     })
@@ -78,12 +79,14 @@ function DiscussionPanel({ activeProjectId, currentUser }) {
             </div>
 
             {/* Formulaire d'envoi */}
-            <form onSubmit={handleSendNote} style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                <textarea 
+            <form onSubmit={handleSendNote} className="chat-form" style={{ borderTop: 'none' }}>
+                <textarea
+                    className="textarea grow"
+                    style={{ minHeight: 44, height: 44, resize: 'none' }}
                     value={newNote}
                     onChange={(e) => setNewNote(e.target.value)}
-                    placeholder="Écrivez une note à votre équipe..."
-                    style={{ flexGrow: 1, height: '50px', resize: 'none', margin: 0, padding: '10px' }}
+                    placeholder="Écrire une note… (Entrée pour envoyer, Maj+Entrée pour aller à la ligne)"
+                    aria-label="Nouvelle note"
                     onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
@@ -91,8 +94,8 @@ function DiscussionPanel({ activeProjectId, currentUser }) {
                         }
                     }}
                 />
-                <button type="submit" disabled={isLoading || !newNote.trim()} style={{ height: '50px' }}>
-                    {isLoading ? '...' : 'Envoyer'}
+                <button type="submit" className="btn" style={{ height: 44 }} disabled={isLoading || !newNote.trim()}>
+                    <Send size={16} /> Envoyer
                 </button>
             </form>
         </div>

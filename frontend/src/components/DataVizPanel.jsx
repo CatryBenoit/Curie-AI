@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BarChart3, Tags, Loader2 } from 'lucide-react';
 import api from '../api';
 
 function DataVizPanel({ activeProjectId }) {
@@ -21,77 +22,91 @@ function DataVizPanel({ activeProjectId }) {
         }
     };
 
-    // Calculer le maximum pour les barres de progression
+    // Thèmes triés du plus fréquent au moins fréquent
+    const macroEntries = Object.entries(stats.macro).sort((a, b) => b[1] - a[1]);
+    const microEntries = Object.entries(stats.micro);
     const maxMacro = Math.max(...Object.values(stats.macro), 1);
     const maxMicro = Math.max(...Object.values(stats.micro), 1);
 
     if (isLoading) {
-        return <div className="panel" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>Chargement des données analytiques...</div>;
+        return (
+            <div className="card">
+                <div className="empty-state"><Loader2 size={24} className="spin" /> Chargement des données analytiques…</div>
+            </div>
+        );
     }
 
     if (stats.totalArticles === 0) {
         return (
-            <div className="panel" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)' }}>
-                Aucune donnée à analyser. Veuillez importer et analyser des articles dans l'Espace de Travail.
+            <div className="card">
+                <div className="empty-state">
+                    <BarChart3 size={32} />
+                    <p className="empty-state-title">Aucune donnée à analyser</p>
+                    <p>Collectez et analysez des articles dans l'espace de travail pour voir apparaître les thèmes.</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="panel" style={{ height: '100%', overflowY: 'auto' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📊 Analyse des données IA ({stats.totalArticles} documents)</h3>
+        <div className="stack stack-lg">
+            {/* Chiffres clés */}
+            <div className="stat-row">
+                <div className="card stat-tile">
+                    <span className="stat-label">Documents analysés</span>
+                    <span className="stat-value">{stats.totalArticles}</span>
+                </div>
+                <div className="card stat-tile">
+                    <span className="stat-label">Domaines de recherche</span>
+                    <span className="stat-value">{macroEntries.length}</span>
+                </div>
+                <div className="card stat-tile">
+                    <span className="stat-label">Mots-clés distincts</span>
+                    <span className="stat-value">{microEntries.length}</span>
+                </div>
+            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                
-                {/* GRAPHIQUE DES MACRO-THÈMES (Barres horizontales) */}
-                <div style={{ backgroundColor: 'var(--bg-base)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    <h4 style={{ marginTop: 0, color: 'var(--primary)' }}>Domaines de recherche (Macro-thèmes)</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {Object.entries(stats.macro).map(([theme, count]) => (
-                            <div key={theme}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                                    <span style={{ fontWeight: 'bold' }}>{theme}</span>
-                                    <span style={{ color: 'var(--text-muted)' }}>{count} doc(s)</span>
+            <div className="two-col">
+                {/* DOMAINES (barres horizontales) */}
+                <div className="card">
+                    <div className="card-header">
+                        <div>
+                            <h3 className="card-title"><BarChart3 size={18} /> Domaines de recherche</h3>
+                            <p className="card-subtitle">Nombre de documents par macro-thème</p>
+                        </div>
+                    </div>
+                    <div className="bar-list">
+                        {macroEntries.map(([theme, count]) => (
+                            <div key={theme} title={`${theme} : ${count} document${count > 1 ? 's' : ''}`}>
+                                <div className="bar-row-head">
+                                    <span style={{ fontWeight: 500 }}>{theme}</span>
+                                    <span className="muted tabular">{count}</span>
                                 </div>
-                                <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-hover)', borderRadius: '4px', overflow: 'hidden' }}>
-                                    <div style={{ 
-                                        height: '100%', 
-                                        width: `${(count / maxMacro) * 100}%`, 
-                                        backgroundColor: 'var(--primary)',
-                                        borderRadius: '4px',
-                                        transition: 'width 0.5s ease-in-out'
-                                    }}></div>
+                                <div className="bar-track">
+                                    <div className="bar-fill" style={{ width: `${(count / maxMacro) * 100}%` }} />
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* NUAGE DE MOTS-CLÉS (Micro-thèmes) */}
-                <div style={{ backgroundColor: 'var(--bg-base)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    <h4 style={{ marginTop: 0, color: 'var(--accent)' }}>Nuage de mots-clés (Micro-thèmes)</h4>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', justifyContent: 'center', padding: '10px' }}>
-                        {Object.entries(stats.micro).map(([word, count]) => {
-                            // Calcul de la taille de la police entre 0.8rem et 2rem selon la fréquence
-                            const fontSize = 0.8 + ((count / maxMicro) * 1.2);
-                            // Calcul de l'opacité
-                            const opacity = 0.5 + ((count / maxMicro) * 0.5);
-                            
+                {/* NUAGE DE MOTS-CLÉS */}
+                <div className="card">
+                    <div className="card-header">
+                        <div>
+                            <h3 className="card-title"><Tags size={18} /> Mots-clés</h3>
+                            <p className="card-subtitle">Taille proportionnelle à la fréquence</p>
+                        </div>
+                    </div>
+                    <div className="tag-cloud">
+                        {microEntries.map(([word, count]) => {
+                            // Taille de police entre 0.8rem et 1.8rem selon la fréquence
+                            const fontSize = 0.8 + ((count / maxMicro) * 1.0);
                             return (
-                                <span key={word} style={{ 
-                                    fontSize: `${fontSize}rem`, 
-                                    opacity: opacity,
-                                    fontWeight: count === maxMicro ? 'bold' : 'normal',
-                                    color: 'var(--text-main)',
-                                    padding: '4px 8px',
-                                    backgroundColor: 'var(--bg-hover)',
-                                    borderRadius: '8px',
-                                    transition: 'transform 0.2s',
-                                    cursor: 'default'
-                                }}
-                                onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
-                                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-                                title={`Apparaît ${count} fois`}
+                                <span
+                                    key={word}
+                                    style={{ fontSize: `${fontSize}rem`, fontWeight: count === maxMicro ? 600 : 400 }}
+                                    title={`Apparaît ${count} fois`}
                                 >
                                     {word}
                                 </span>
@@ -99,7 +114,6 @@ function DataVizPanel({ activeProjectId }) {
                         })}
                     </div>
                 </div>
-
             </div>
         </div>
     );

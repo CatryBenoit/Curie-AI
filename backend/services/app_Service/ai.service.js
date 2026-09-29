@@ -1,4 +1,4 @@
-const ProjectModel = require('../../models/project.model');
+const ProjectModel = require('../../Models/project.model');
 const AiReaderService = require('../IA_service/ai-reader.service');
 
 class AiService {

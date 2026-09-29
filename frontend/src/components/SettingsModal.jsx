@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { Settings, X, Server, Pencil, Trash2, Plug, Save, CheckCircle2, AlertCircle, Loader2, Route } from 'lucide-react';
 import api from '../api';
 
 const SettingsModal = ({ isOpen, onClose }) => {
@@ -10,11 +11,11 @@ const SettingsModal = ({ isOpen, onClose }) => {
     const [testStatus, setTestStatus] = useState(null); // 'loading', 'success', 'error'
 
     const roles = [
-        { id: 'guardrail', label: '🛡️ Guardrail (Triage)' },
-        { id: 'detective', label: '🕵️ Détective (Éthique)' },
-        { id: 'analysis', label: '🧠 Analyse (Extraction)' },
-        { id: 'synthesis', label: '📝 Synthèse (Rapport)' },
-        { id: 'inspiration', label: '💡 Inspiration (Pistes)' }
+        { id: 'guardrail', label: 'Guardrail', desc: 'Tri des résultats' },
+        { id: 'detective', label: 'Détective', desc: 'Conflits d\'intérêts' },
+        { id: 'analysis', label: 'Analyse', desc: 'Extraction des données' },
+        { id: 'synthesis', label: 'Synthèse', desc: 'Rédaction du rapport' },
+        { id: 'inspiration', label: 'Inspiration', desc: 'Nouvelles pistes' }
     ];
 
     useEffect(() => {
@@ -62,7 +63,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
         try {
             await api.post('/settings/providers/test', { base_url: formData.base_url, api_key: formData.api_key });
             setTestStatus('success');
-        } catch (error) {
+        } catch {
             setTestStatus('error');
         }
     };
@@ -94,6 +95,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
                 fetchProviders();
                 fetchRoutings();
             } catch (error) {
+                console.error(error);
                 alert("Erreur lors de la suppression.");
             }
         }
@@ -109,6 +111,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
             await api.post('/settings/routing', { provider_id: providerId, role: roleId, model_name: modelName });
             fetchRoutings();
         } catch (error) {
+            console.error(error);
             alert("Erreur lors de l'assignation du rôle.");
         }
     };
@@ -117,109 +120,120 @@ const SettingsModal = ({ isOpen, onClose }) => {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '900px' }}>
+            <div className="modal-content modal-lg" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
                 <div className="modal-header">
-                    <h4>⚙️ Configuration Avancée des Modèles IA</h4>
-                    <button className="btn-secondary btn-small" onClick={onClose}>Fermer</button>
+                    <h4><Settings size={18} /> Paramètres des modèles IA</h4>
+                    <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Fermer"><X size={18} /></button>
                 </div>
-                
-                <div className="modal-body">
+
+                <div className="modal-body stack" style={{ gap: 28 }}>
                     {/* SECTION 1 : FOURNISSEURS */}
-                    <div style={{ marginBottom: '32px' }}>
-                        <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '16px' }}>1. Fournisseurs API</h3>
-                        
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <section>
+                        <div className="section-title" style={{ fontSize: '0.9375rem' }}><Server size={16} /> Fournisseurs d'API</div>
+                        <p className="hint" style={{ marginBottom: 12 }}>Les services (OpenAI, Ollama local…) auxquels les agents peuvent envoyer leurs requêtes.</p>
+
+                        <div className="two-col">
                             {/* Liste existante */}
-                            <div style={{ background: 'var(--bg-base)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                                <h5 style={{ marginTop: 0, marginBottom: '12px' }}>Fournisseurs enregistrés</h5>
+                            <div className="stack stack-sm">
                                 {providers.length === 0 ? (
-                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Aucun fournisseur.</p>
+                                    <div className="well muted small">Aucun fournisseur enregistré.</div>
                                 ) : (
-                                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        {providers.map(p => (
-                                            <li key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'var(--bg-panel)', borderRadius: '6px', border: '1px solid var(--border)' }}>
-                                                <div>
-                                                    <strong>{p.name}</strong>
-                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.base_url}</div>
-                                                </div>
-                                                <div style={{ display: 'flex', gap: '6px' }}>
-                                                    <button className="btn-secondary btn-small" onClick={() => handleEditProvider(p)}>✏️</button>
-                                                    <button className="btn-danger btn-small" onClick={() => handleDeleteProvider(p.id)}>🗑️</button>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    providers.map(p => (
+                                        <div key={p.id} className={`well row ${formData.id === p.id ? 'is-selected' : ''}`} style={{ padding: '10px 12px' }}>
+                                            <div className="grow">
+                                                <strong>{p.name}</strong>
+                                                <div className="hint" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.base_url}</div>
+                                            </div>
+                                            <button className="btn btn-ghost btn-icon" onClick={() => handleEditProvider(p)} aria-label={`Modifier ${p.name}`} title="Modifier"><Pencil size={15} /></button>
+                                            <button className="btn btn-danger-ghost btn-icon" onClick={() => handleDeleteProvider(p.id)} aria-label={`Supprimer ${p.name}`} title="Supprimer"><Trash2 size={15} /></button>
+                                        </div>
+                                    ))
                                 )}
                             </div>
 
                             {/* Formulaire Édition/Ajout */}
-                            <div style={{ background: 'var(--bg-base)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                                <h5 style={{ marginTop: 0, marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
-                                    {formData.id ? 'Éditer le fournisseur' : 'Ajouter un fournisseur'}
-                                    {formData.id && <button className="btn-secondary btn-small" onClick={handleResetForm} style={{ fontSize: '0.7rem', padding: '2px 6px' }}>Annuler</button>}
-                                </h5>
-                                
-                                <input type="text" placeholder="Nom (ex: OpenAI, Ollama Local)" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                                <input type="text" placeholder="URL de base (ex: http://localhost:11434/v1)" value={formData.base_url} onChange={e => setFormData({...formData, base_url: e.target.value})} />
-                                <input type="password" placeholder="Clé API (Optionnelle en local)" value={formData.api_key} onChange={e => setFormData({...formData, api_key: e.target.value})} />
-                                
-                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                    <button onClick={handleTestConnection} className="btn-secondary" style={{ flex: 1 }}>
-                                        {testStatus === 'loading' ? '⏳ Test...' : '🔌 Tester la connexion'}
+                            <div className="well stack">
+                                <div className="row row-between">
+                                    <strong>{formData.id ? 'Modifier le fournisseur' : 'Ajouter un fournisseur'}</strong>
+                                    {formData.id && <button className="btn btn-ghost btn-sm" onClick={handleResetForm}>Annuler</button>}
+                                </div>
+                                <div className="field">
+                                    <label className="label" htmlFor="prov-name">Nom</label>
+                                    <input id="prov-name" className="input" type="text" placeholder="ex : OpenAI, Ollama local" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                                </div>
+                                <div className="field">
+                                    <label className="label" htmlFor="prov-url">URL de base</label>
+                                    <input id="prov-url" className="input" type="text" placeholder="ex : http://localhost:11434/v1" value={formData.base_url} onChange={e => setFormData({...formData, base_url: e.target.value})} />
+                                </div>
+                                <div className="field">
+                                    <label className="label" htmlFor="prov-key">Clé API <span className="muted">(optionnelle en local)</span></label>
+                                    <input id="prov-key" className="input" type="password" autoComplete="off" value={formData.api_key} onChange={e => setFormData({...formData, api_key: e.target.value})} />
+                                </div>
+
+                                <div className="row">
+                                    <button onClick={handleTestConnection} className="btn btn-secondary grow">
+                                        {testStatus === 'loading' ? <Loader2 size={16} className="spin" /> : <Plug size={16} />}
+                                        {testStatus === 'loading' ? 'Test...' : 'Tester'}
                                     </button>
-                                    <button onClick={handleSaveProvider} className="btn" style={{ flex: 1, backgroundColor: 'var(--success)' }}>
-                                        💾 Sauvegarder
+                                    <button onClick={handleSaveProvider} className="btn grow">
+                                        <Save size={16} /> Enregistrer
                                     </button>
                                 </div>
 
-                                {testStatus === 'success' && <div style={{ color: 'var(--success)', fontSize: '0.85rem', marginTop: '10px', fontWeight: '500' }}>✅ Connexion réussie !</div>}
-                                {testStatus === 'error' && <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: '10px', fontWeight: '500' }}>❌ Échec de la connexion. Vérifiez l'URL ou la clé.</div>}
+                                {testStatus === 'success' && <div className="notice notice-success"><CheckCircle2 size={16} /> Connexion réussie.</div>}
+                                {testStatus === 'error' && <div className="notice notice-danger"><AlertCircle size={16} /> Échec de la connexion. Vérifiez l'URL ou la clé.</div>}
                             </div>
                         </div>
-                    </div>
+                    </section>
 
                     {/* SECTION 2 : ROUTAGE */}
-                    <div>
-                        <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '16px' }}>2. Assignation des Modèles (Routage)</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Agent / Rôle</th>
-                                    <th>Fournisseur API</th>
-                                    <th>Nom exact du modèle</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {roles.map(role => {
-                                    const currentRouting = routings.find(r => r.role === role.id) || {};
-                                    return (
-                                        <tr key={role.id}>
-                                            <td style={{ fontWeight: '500' }}>{role.label}</td>
-                                            <td>
-                                                <select defaultValue={currentRouting.provider_id || ""} id={`prov-${role.id}`} style={{ marginBottom: 0 }}>
-                                                    <option value="" disabled>Par défaut (Global)</option>
-                                                    {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <input type="text" defaultValue={currentRouting.model_name || ""} id={`mod-${role.id}`} placeholder="ex: llama3.1:8b" style={{ marginBottom: 0 }} />
-                                            </td>
-                                            <td>
-                                                <button className="btn-small" style={{ backgroundColor: 'var(--success)' }} onClick={() => {
-                                                    const provId = document.getElementById(`prov-${role.id}`).value;
-                                                    const modName = document.getElementById(`mod-${role.id}`).value;
-                                                    handleAssignRole(role.id, provId, modName);
-                                                }}>
-                                                    💾
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                    <section>
+                        <div className="section-title" style={{ fontSize: '0.9375rem' }}><Route size={16} /> Modèle utilisé par chaque agent</div>
+                        <p className="hint" style={{ marginBottom: 12 }}>Sans assignation, l'agent utilise le modèle par défaut.</p>
+                        <div className="table-container">
+                            <table className="table">
+                                <thead>
+                                    <tr>
+                                        <th>Agent</th>
+                                        <th>Fournisseur</th>
+                                        <th>Nom exact du modèle</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {roles.map(role => {
+                                        const currentRouting = routings.find(r => r.role === role.id) || {};
+                                        return (
+                                            <tr key={role.id}>
+                                                <td>
+                                                    <strong>{role.label}</strong>
+                                                    <div className="hint">{role.desc}</div>
+                                                </td>
+                                                <td>
+                                                    <select className="select input-sm" defaultValue={currentRouting.provider_id || ""} id={`prov-${role.id}`} aria-label={`Fournisseur pour ${role.label}`}>
+                                                        <option value="" disabled>Par défaut (global)</option>
+                                                        {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input className="input input-sm mono" type="text" defaultValue={currentRouting.model_name || ""} id={`mod-${role.id}`} placeholder="ex : llama3.1:8b" aria-label={`Modèle pour ${role.label}`} />
+                                                </td>
+                                                <td className="cell-actions">
+                                                    <button className="btn btn-secondary btn-sm" onClick={() => {
+                                                        const provId = document.getElementById(`prov-${role.id}`).value;
+                                                        const modName = document.getElementById(`mod-${role.id}`).value;
+                                                        handleAssignRole(role.id, provId, modName);
+                                                    }}>
+                                                        <Save size={14} /> Appliquer
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
                 </div>
             </div>
         </div>

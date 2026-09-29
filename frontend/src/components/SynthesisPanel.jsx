@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { FileText, Sparkles, Loader2 } from 'lucide-react';
 import api from '../api';
 
 function SynthesisPanel({ activeProjectId }) {
@@ -18,7 +19,7 @@ function SynthesisPanel({ activeProjectId }) {
         try {
             const res = await api.get(`/projects/${activeProjectId}/synthesis`);
             setSynthesis(res.data.report || '');
-        } catch (err) {
+        } catch {
             setSynthesis('');
         }
     };
@@ -34,6 +35,7 @@ function SynthesisPanel({ activeProjectId }) {
             // Optionnel : on peut vider le champ après génération, ou le laisser pour que l'utilisateur affine.
             // setGuidance(''); 
         } catch (err) {
+            console.error("Erreur synthèse:", err);
             alert("Erreur lors de la génération de la synthèse.");
         } finally {
             setIsLoading(false);
@@ -43,49 +45,51 @@ function SynthesisPanel({ activeProjectId }) {
     if (!activeProjectId) return null;
 
     return (
-        <div className="panel" style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, paddingBottom: 0, borderBottom: 'none' }}>📝 Synthèse Globale</h3>
-            </div>
-
-            {/* 🎯 NOUVEAU : Zone de guidage en direct */}
-            <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    🎯 Guidage en direct (Optionnel)
-                </label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <input 
-                        type="text" 
-                        placeholder="Ex: Concentre-toi sur les effets secondaires, résume sous forme de tirets..." 
-                        value={guidance}
-                        onChange={(e) => setGuidance(e.target.value)}
-                        style={{ margin: 0, flexGrow: 1 }}
-                        disabled={isLoading}
-                    />
-                    <button 
-                        onClick={generateSynthesis} 
-                        disabled={isLoading} 
-                        style={{ whiteSpace: 'nowrap' }}
-                    >
-                        {isLoading ? '⏳ Rédaction en cours...' : '✨ Générer la Synthèse'}
-                    </button>
+        <div className="card card-fill" style={{ height: 620 }}>
+            <div className="card-header">
+                <div>
+                    <h3 className="card-title"><FileText size={18} /> Synthèse globale</h3>
+                    <p className="card-subtitle">Rapport rédigé par l'IA à partir des articles du projet.</p>
                 </div>
             </div>
 
+            {/* Zone de guidage en direct */}
+            <form
+                className="row"
+                style={{ marginBottom: 14 }}
+                onSubmit={(e) => { e.preventDefault(); generateSynthesis(); }}
+            >
+                <input
+                    className="input grow"
+                    type="text"
+                    placeholder="Consigne optionnelle : ex. concentre-toi sur les effets secondaires…"
+                    value={guidance}
+                    onChange={(e) => setGuidance(e.target.value)}
+                    disabled={isLoading}
+                    aria-label="Consigne pour la synthèse"
+                />
+                <button type="submit" className="btn" disabled={isLoading}>
+                    {isLoading ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
+                    {isLoading ? 'Rédaction...' : (synthesis ? 'Régénérer' : 'Générer')}
+                </button>
+            </form>
+
             {/* Zone d'affichage du Markdown */}
-            <div style={{ flexGrow: 1, overflowY: 'auto', padding: '20px', backgroundColor: 'var(--bg-base)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+            <div className="well grow" style={{ overflowY: 'auto', background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column' }}>
                 {isLoading ? (
-                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: '10px' }}>
-                        <span style={{ fontSize: '2rem' }}>🤖</span>
-                        <p>L'Agent Rédacteur compile les données selon vos directives...</p>
+                    <div className="empty-state">
+                        <Loader2 size={28} className="spin" />
+                        <p>L'agent rédacteur compile les données selon vos consignes…</p>
                     </div>
                 ) : synthesis ? (
-                    <div style={{ fontSize: '0.95rem', lineHeight: '1.7', color: 'var(--text-main)' }}>
+                    <div className="markdown">
                         <ReactMarkdown>{synthesis}</ReactMarkdown>
                     </div>
                 ) : (
-                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                        <p>Aucune synthèse disponible. Lancez la génération !</p>
+                    <div className="empty-state">
+                        <FileText size={32} />
+                        <p className="empty-state-title">Aucune synthèse pour l'instant</p>
+                        <p>Cliquez sur « Générer » pour en rédiger une.</p>
                     </div>
                 )}
             </div>

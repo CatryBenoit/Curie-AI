@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { Search, Bot, Rocket, PauseCircle, Plus, Play, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../api';
 
 function ResearchPanel({ activeProjectId }) {
     // --- ÉTATS EXISTANTS ---
     const [topic, setTopic] = useState('');
     const [amount, setAmount] = useState(100);
-    const [statusMsg, setStatusMsg] = useState('');
+    const [statusMsg, setStatusMsg] = useState(null); // { type: 'info' | 'success' | 'error', text }
     const [isLoading, setIsLoading] = useState(false);
 
     // --- NOUVEAUX ÉTATS (COPILOTE) ---
@@ -106,7 +107,7 @@ function ResearchPanel({ activeProjectId }) {
                 approvedQueries,
                 currentDepth
             });
-            setStatusMsg(`✅ L'agent repart avec ${approvedQueries.length} pistes !`);
+            setStatusMsg({ type: 'success', text: `L'agent repart avec ${approvedQueries.length} pistes.` });
             setSuggestedQueries([]);
             setApprovedQueries([]);
         } catch (error) {
@@ -119,7 +120,7 @@ function ResearchPanel({ activeProjectId }) {
     const startAutonomousLoop = async () => {
         if (!activeProjectId) return;
         const confirmLoop = window.confirm(
-            "🤖 Voulez-vous lancer l'Agent Deep Research ?\n\nL'IA va identifier les manques et relancer des recherches."
+            "Lancer l'agent Deep Research ?\n\nL'IA va identifier les manques et relancer des recherches."
         );
         if (!confirmLoop) return;
 
@@ -134,13 +135,13 @@ function ResearchPanel({ activeProjectId }) {
     const handleStartResearch = async (e) => {
         e.preventDefault();
         if (!activeProjectId) {
-            setStatusMsg("❌ Impossible : Veuillez sélectionner un projet.");
+            setStatusMsg({ type: 'error', text: 'Veuillez sélectionner un projet.' });
             return;
         }
         if (!topic) return;
 
         setIsLoading(true);
-        setStatusMsg("⏳ Connexion au serveur...");
+        setStatusMsg({ type: 'info', text: 'Connexion au serveur...' });
 
         try {
             const res = await api.post('/research/start', { 
@@ -148,159 +149,160 @@ function ResearchPanel({ activeProjectId }) {
                 amount: parseInt(amount),
                 projectId: activeProjectId
             });
-            setStatusMsg(`✅ ${res.data.message}`);
+            setStatusMsg({ type: 'success', text: res.data.message });
             setTopic('');
         } catch (err) {
-            setStatusMsg(`❌ ${err.response?.data?.error || "Erreur serveur"}`);
+            setStatusMsg({ type: 'error', text: err.response?.data?.error || 'Erreur serveur' });
         } finally {
             setIsLoading(false);
         }
     };
 
-    return (
-        <div className="card research-card">
-            <h3>🔬 Aspirateur Scientifique (OpenAlex)</h3>
+    const isPaused = projectStatus === 'PAUSED';
+    const manualQueries = approvedQueries.filter(q => !suggestedQueries.includes(q));
+    const StatusIcon = statusMsg?.type === 'success' ? CheckCircle2 : statusMsg?.type === 'error' ? AlertCircle : Loader2;
 
-            {/* 🎛️ NOUVEAU : Toggle Copilote */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px', backgroundColor: '#f8fafc', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
-                <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '50px', height: '24px' }}>
-                    <input 
-                        type="checkbox" 
-                        checked={copilotMode} 
-                        onChange={handleToggleCopilot} 
-                        disabled={!activeProjectId}
-                        style={{ opacity: 0, width: 0, height: 0 }}
-                    />
-                    <span style={{ 
-                        position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, 
-                        backgroundColor: copilotMode ? '#4f46e5' : '#ccc', transition: '.4s', borderRadius: '24px' 
-                    }}>
-                        <span style={{
-                            position: 'absolute', content: '""', height: '16px', width: '16px', left: '4px', bottom: '4px',
-                            backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
-                            transform: copilotMode ? 'translateX(26px)' : 'translateX(0)'
-                        }}></span>
-                    </span>
-                </label>
+    return (
+        <div className="card">
+            <div className="card-header">
                 <div>
-                    <strong style={{ display: 'block', fontSize: '0.9rem' }}>Mode Copilote (Human-in-the-Loop)</strong>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        {copilotMode ? "L'IA s'arrêtera pour demander votre validation." : "L'IA travaille en autonomie complète."}
-                    </span>
+                    <h3 className="card-title"><Search size={18} /> Collecte d'articles</h3>
+                    <p className="card-subtitle">Recherche et importe des publications depuis OpenAlex.</p>
                 </div>
-                {/* Badge de statut du projet */}
-                <div style={{ marginLeft: 'auto', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', backgroundColor: projectStatus === 'PAUSED' ? '#fef3c7' : '#dcfce7', color: projectStatus === 'PAUSED' ? '#d97706' : '#166534' }}>
-                    {projectStatus === 'PAUSED' ? 'EN PAUSE' : 'ACTIF'}
+                <span className={`badge ${isPaused ? 'badge-warning' : 'badge-success'}`}>
+                    {isPaused ? <PauseCircle size={12} /> : <span className="status-dot" />}
+                    {isPaused ? 'En pause' : 'Actif'}
+                </span>
+            </div>
+
+            <div className="two-col">
+                {/* --- FORMULAIRE D'ASPIRATION --- */}
+                <form onSubmit={handleStartResearch} className="stack" style={{ opacity: isPaused ? 0.5 : 1, pointerEvents: isPaused ? 'none' : 'auto' }}>
+                    <div className="field">
+                        <label className="label" htmlFor="research-topic">Sujet de recherche</label>
+                        <input
+                            id="research-topic"
+                            className="input"
+                            type="text"
+                            placeholder="ex : Alzheimer immunotherapy, CRISPR…"
+                            value={topic}
+                            onChange={(e) => setTopic(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div className="row row-wrap" style={{ alignItems: 'flex-end' }}>
+                        <div className="field">
+                            <label className="label" htmlFor="research-amount">Nombre max d'articles</label>
+                            <input
+                                id="research-amount"
+                                className="input input-num"
+                                type="number"
+                                min="1"
+                                max="5000"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                            />
+                        </div>
+                        <button type="submit" disabled={isLoading} className="btn grow">
+                            {isLoading ? <Loader2 size={16} className="spin" /> : <Search size={16} />}
+                            {isLoading ? 'Envoi de la commande...' : 'Lancer la collecte'}
+                        </button>
+                    </div>
+
+                    {statusMsg && (
+                        <div className={`notice ${statusMsg.type === 'success' ? 'notice-success' : statusMsg.type === 'error' ? 'notice-danger' : ''}`}>
+                            <StatusIcon size={16} className={statusMsg.type === 'info' ? 'spin' : undefined} />
+                            <span>{statusMsg.text}</span>
+                        </div>
+                    )}
+                </form>
+
+                {/* --- MODES DE L'AGENT --- */}
+                <div className="stack">
+                    <div className="well row" style={{ gap: 12 }}>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={copilotMode}
+                                onChange={handleToggleCopilot}
+                                disabled={!activeProjectId}
+                                aria-label="Mode copilote"
+                            />
+                            <span className="switch-track" />
+                        </label>
+                        <div className="grow">
+                            <strong>Mode copilote</strong>
+                            <p className="hint">
+                                {copilotMode ? "L'IA s'arrête pour demander votre validation entre chaque cycle." : "L'IA travaille en autonomie complète."}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="well row row-wrap" style={{ gap: 12, opacity: isPaused ? 0.5 : 1, pointerEvents: isPaused ? 'none' : 'auto' }}>
+                        <Bot size={20} className="muted" />
+                        <div className="grow" style={{ flexBasis: 180 }}>
+                            <strong>Agent autonome</strong>
+                            <p className="hint">Laisse l'IA combler les lacunes en relançant des recherches en boucle.</p>
+                        </div>
+                        <button type="button" className="btn btn-secondary" onClick={startAutonomousLoop}>
+                            <Rocket size={16} /> Lancer l'exploration
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* 🛑 NOUVEAU : La Salle d'attente (Affichée uniquement si en PAUSE) */}
-            {projectStatus === 'PAUSED' && (
-                <div style={{ border: '2px dashed #f59e0b', padding: '15px', borderRadius: '8px', backgroundColor: '#fffbeb', marginBottom: '20px' }}>
-                    <h4 style={{ color: '#d97706', marginTop: 0 }}>🛑 L'IA attend vos instructions</h4>
-                    <p style={{ fontSize: '0.85rem' }}>Voici les pistes générées à la fin du cycle {currentDepth - 1} :</p>
-                    
-                    <ul style={{ listStyle: 'none', padding: 0, margin: '15px 0' }}>
+            {/* --- SALLE D'ATTENTE (uniquement si en PAUSE) --- */}
+            {isPaused && (
+                <div className="well" style={{ marginTop: 16, borderColor: 'var(--warning)', background: 'var(--warning-soft)' }}>
+                    <div className="section-title" style={{ color: 'var(--warning-text)' }}>
+                        <PauseCircle size={16} /> L'IA attend vos instructions
+                    </div>
+                    <p className="small" style={{ marginBottom: 12 }}>
+                        Pistes générées à la fin du cycle {currentDepth - 1}. Décochez celles à ignorer.
+                    </p>
+
+                    <div className="stack stack-sm" style={{ marginBottom: 12 }}>
                         {suggestedQueries.map((query, index) => (
-                            <li key={index} style={{ marginBottom: '8px' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
-                                    <input 
-                                        type="checkbox" 
-                                        checked={approvedQueries.includes(query)} 
-                                        onChange={() => toggleQueryApproval(query)} 
-                                    />
-                                    {query}
-                                </label>
-                            </li>
+                            <label key={index} className="checkbox">
+                                <input
+                                    type="checkbox"
+                                    checked={approvedQueries.includes(query)}
+                                    onChange={() => toggleQueryApproval(query)}
+                                />
+                                <span>{query}</span>
+                            </label>
                         ))}
-                    </ul>
+                    </div>
 
                     {/* Ajout manuel */}
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                        <input 
-                            type="text" 
-                            value={customQuery} 
-                            onChange={(e) => setCustomQuery(e.target.value)} 
-                            placeholder="Ajouter une piste manuelle..."
-                            style={{ flex: 1, padding: '6px', fontSize: '0.85rem' }}
+                    <div className="row">
+                        <input
+                            className="input input-sm grow"
+                            type="text"
+                            value={customQuery}
+                            onChange={(e) => setCustomQuery(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCustomQuery(); } }}
+                            placeholder="Ajouter une piste manuelle…"
                         />
-                        <button type="button" onClick={handleAddCustomQuery} style={{ padding: '6px 12px', backgroundColor: '#334155', color: 'white', border: 'none', borderRadius: '4px' }}>
-                            +
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddCustomQuery}>
+                            <Plus size={14} /> Ajouter
                         </button>
                     </div>
 
                     {/* Pistes ajoutées manuellement */}
-                    {approvedQueries.filter(q => !suggestedQueries.includes(q)).length > 0 && (
-                        <div style={{ marginTop: '15px', fontSize: '0.85rem' }}>
-                            <strong>Pistes ajoutées manuellement :</strong>
-                            <ul style={{ paddingLeft: '20px', color: '#166534' }}>
-                                {approvedQueries.filter(q => !suggestedQueries.includes(q)).map((q, idx) => (
-                                    <li key={idx}>{q}</li>
-                                ))}
-                            </ul>
+                    {manualQueries.length > 0 && (
+                        <div className="row row-wrap" style={{ marginTop: 10 }}>
+                            <span className="small muted">Ajoutées :</span>
+                            {manualQueries.map((q, idx) => (
+                                <span key={idx} className="badge badge-success">{q}</span>
+                            ))}
                         </div>
                     )}
 
-                    <button 
-                        onClick={handleResumeResearch} 
-                        style={{ marginTop: '15px', width: '100%', padding: '10px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
-                    >
-                        🟢 Valider & Relancer la machine
+                    <button onClick={handleResumeResearch} className="btn btn-success btn-block" style={{ marginTop: 14 }}>
+                        <Play size={16} /> Valider et relancer ({approvedQueries.length} piste{approvedQueries.length > 1 ? 's' : ''})
                     </button>
-                </div>
-            )}
-
-            {/* --- ANCIEN FORMULAIRE D'ASPIRATION --- */}
-            <form onSubmit={handleStartResearch} className="research-form" style={{ opacity: projectStatus === 'PAUSED' ? 0.5 : 1, pointerEvents: projectStatus === 'PAUSED' ? 'none' : 'auto' }}>
-                <input 
-                    type="text" 
-                    placeholder="Sujet (ex: Alzheimer immunotherapy, CRISPR...)" 
-                    value={topic} 
-                    onChange={(e) => setTopic(e.target.value)} 
-                    required 
-                />
-                
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', alignItems: 'center' }}>
-                    <label style={{ whiteSpace: 'nowrap' }}>Nombre max :</label>
-                    <input 
-                        type="number" 
-                        min="1" 
-                        max="5000" 
-                        value={amount} 
-                        onChange={(e) => setAmount(e.target.value)} 
-                        style={{ marginBottom: '0' }}
-                    />
-                </div>
-
-                <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--primary)' }}>🤖 Mode Agent Autonome :</span>
-                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Laisse l'IA combler les lacunes en relançant des recherches en boucle.</p>
-                    </div>
-                    <button 
-                        type="button" 
-                        onClick={startAutonomousLoop}
-                        style={{ 
-                            backgroundColor: '#4f46e5', 
-                            color: '#fff', 
-                            border: '1px solid #6366f1', 
-                            whiteSpace: 'nowrap',
-                            fontWeight: 'bold',
-                            boxShadow: '0 0 10px rgba(79, 70, 229, 0.4)'
-                        }}
-                    >
-                        🚀 Lancer l'exploration
-                    </button>
-                </div>
-
-                <button type="submit" disabled={isLoading} className="btn-research" style={{ marginTop: '15px' }}>
-                    {isLoading ? "Envoi de la commande..." : "🚀 Lancer l'aspiration des données"}
-                </button>
-            </form>
-
-            {statusMsg && (
-                <div className="status-msg-box" style={{ marginTop: '15px' }}>
-                    {statusMsg}
                 </div>
             )}
         </div>

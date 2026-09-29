@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LineChart as LineIcon, Plus, X, Trash2, Save, Eye } from 'lucide-react';
 import api from '../api';
 import { 
     BarChart, Bar, PieChart, Pie, LineChart, Line, 
@@ -6,8 +7,26 @@ import {
     ResponsiveContainer, Cell 
 } from 'recharts';
 
-// Couleurs professionnelles pour les graphiques
-const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+// Palette catégorielle validée (daltonisme) : toujours dans cet ordre, jamais mélangée
+const SERIES = Array.from({ length: 8 }, (_, i) => `var(--series-${i + 1})`);
+
+const AXIS_PROPS = {
+    stroke: 'var(--chart-grid)',
+    tick: { fill: 'var(--chart-axis)', fontSize: 12 },
+    tickLine: false,
+};
+
+// Infobulle aux couleurs du thème
+function ChartTooltip({ active, payload }) {
+    if (!active || !payload?.length) return null;
+    const point = payload[0];
+    return (
+        <div className="chart-tooltip">
+            <strong>{point.payload.name}</strong>
+            <span className="tabular">{point.value}</span>
+        </div>
+    );
+}
 
 function GraphPanel({ activeProjectId }) {
     const [charts, setCharts] = useState([]);
@@ -36,8 +55,9 @@ function GraphPanel({ activeProjectId }) {
     };
 
     const handleDataChange = (index, field, val) => {
-        const updated = [...newData];
-        updated[index][field] = field === 'value' ? Number(val) : val;
+        const updated = newData.map((point, i) =>
+            i === index ? { ...point, [field]: field === 'value' ? Number(val) : val } : point
+        );
         setNewData(updated);
     };
 
@@ -59,57 +79,61 @@ function GraphPanel({ activeProjectId }) {
             setIsCreating(false);
             fetchCharts(); // Rafraîchir la liste
         } catch (err) {
+            console.error("Erreur sauvegarde graphique :", err);
             alert("Erreur lors de la sauvegarde du graphique.");
         }
     };
 
     // Fonction pour dessiner le bon graphique selon le type
     const renderChart = (type, data) => {
-        if (!data || data.length === 0) return <p>Aucune donnée.</p>;
+        if (!data || data.length === 0) return <div className="empty-state">Aucune donnée.</div>;
 
         switch (type) {
             case 'pie':
                 return (
-                    <ResponsiveContainer width="100%" height={250}>
+                    <ResponsiveContainer width="100%" height={260}>
                         <PieChart>
-                            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                            <Pie
+                                data={data} dataKey="value" nameKey="name" cx="50%" cy="45%"
+                                innerRadius={48} outerRadius={84} paddingAngle={1}
+                                stroke="var(--bg-panel)" strokeWidth={2}
+                                label={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                            >
                                 {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    <Cell key={`cell-${index}`} fill={SERIES[index % SERIES.length]} />
                                 ))}
                             </Pie>
-                            <Tooltip />
-                            <Legend />
+                            <Tooltip content={<ChartTooltip />} />
+                            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }} />
                         </PieChart>
                     </ResponsiveContainer>
                 );
             case 'line':
                 return (
-                    <ResponsiveContainer width="100%" height={250}>
-                        <LineChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                            <XAxis dataKey="name" stroke="var(--text-muted)" />
-                            <YAxis stroke="var(--text-muted)" />
-                            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-base)', border: 'none', borderRadius: '8px' }}/>
-                            <Legend />
-                            <Line type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={3} dot={{ r: 6 }} />
+                    <ResponsiveContainer width="100%" height={260}>
+                        <LineChart data={data} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                            <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+                            <XAxis dataKey="name" {...AXIS_PROPS} />
+                            <YAxis {...AXIS_PROPS} axisLine={false} />
+                            <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'var(--border-strong)' }} />
+                            <Line
+                                type="monotone" dataKey="value" stroke={SERIES[0]} strokeWidth={2}
+                                dot={{ r: 4, fill: SERIES[0], stroke: 'var(--bg-panel)', strokeWidth: 2 }}
+                                activeDot={{ r: 6, stroke: 'var(--bg-panel)', strokeWidth: 2 }}
+                            />
                         </LineChart>
                     </ResponsiveContainer>
                 );
             case 'bar':
             default:
                 return (
-                    <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                            <XAxis dataKey="name" stroke="var(--text-muted)" />
-                            <YAxis stroke="var(--text-muted)" />
-                            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-base)', border: 'none', borderRadius: '8px' }}/>
-                            <Legend />
-                            <Bar dataKey="value" fill="var(--primary)" radius={[4, 4, 0, 0]}>
-                                {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Bar>
+                    <ResponsiveContainer width="100%" height={260}>
+                        <BarChart data={data} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                            <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+                            <XAxis dataKey="name" {...AXIS_PROPS} />
+                            <YAxis {...AXIS_PROPS} axisLine={false} />
+                            <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--bg-hover)' }} />
+                            <Bar dataKey="value" fill={SERIES[0]} radius={[4, 4, 0, 0]} maxBarSize={48} />
                         </BarChart>
                     </ResponsiveContainer>
                 );
@@ -117,74 +141,86 @@ function GraphPanel({ activeProjectId }) {
     };
 
     return (
-        <div className="panel" style={{ minHeight: '400px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ margin: 0 }}>📈 Studio de Graphiques BI</h3>
-                <button onClick={() => setIsCreating(!isCreating)} className={isCreating ? "btn-danger" : "btn-primary"}>
-                    {isCreating ? '✖ Annuler' : '➕ Créer un Graphique'}
+        <div className="card">
+            <div className="card-header">
+                <div>
+                    <h3 className="card-title"><LineIcon size={18} /> Graphiques personnalisés</h3>
+                    <p className="card-subtitle">Construisez vos propres figures ; elles sont incluses dans le rapport PDF.</p>
+                </div>
+                <button onClick={() => setIsCreating(!isCreating)} className={`btn ${isCreating ? 'btn-secondary' : ''}`}>
+                    {isCreating ? <X size={16} /> : <Plus size={16} />}
+                    {isCreating ? 'Annuler' : 'Nouveau graphique'}
                 </button>
             </div>
 
             {/* CONSTRUCTEUR DE GRAPHIQUE */}
             {isCreating && (
-                <div style={{ backgroundColor: 'var(--bg-hover)', padding: '20px', borderRadius: '8px', marginBottom: '30px', border: '1px solid var(--primary)' }}>
-                    <h4 style={{ marginTop: 0 }}>🛠️ Construire votre graphique</h4>
-                    
-                    <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-                        <div style={{ flexGrow: 1 }}>
-                            <label style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>Titre du graphique</label>
-                            <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} style={{ width: '100%' }} />
+                <div className="well" style={{ marginBottom: 20 }}>
+                    <div className="row row-wrap" style={{ alignItems: 'flex-end', marginBottom: 16, gap: 12 }}>
+                        <div className="field grow" style={{ flexBasis: 240 }}>
+                            <label className="label" htmlFor="chart-title">Titre</label>
+                            <input id="chart-title" className="input" type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
                         </div>
-                        <div>
-                            <label style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>Type de graphique</label>
-                            <select value={newType} onChange={(e) => setNewType(e.target.value)}>
-                                <option value="bar">📊 Diagramme en barres</option>
-                                <option value="pie">🥧 Camembert (Pie)</option>
-                                <option value="line">📈 Courbe d'évolution</option>
+                        <div className="field">
+                            <label className="label" htmlFor="chart-type">Type</label>
+                            <select id="chart-type" className="select" value={newType} onChange={(e) => setNewType(e.target.value)}>
+                                <option value="bar">Barres</option>
+                                <option value="pie">Anneau (répartition)</option>
+                                <option value="line">Courbe d'évolution</option>
                             </select>
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                    <div className="two-col">
                         {/* Éditeur de données */}
-                        <div>
-                            <label style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>Données</label>
+                        <div className="stack stack-sm">
+                            <div className="data-row label">
+                                <span>Libellé</span><span>Valeur</span><span style={{ width: 30 }} />
+                            </div>
                             {newData.map((point, idx) => (
-                                <div key={idx} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                                    <input type="text" value={point.name} onChange={(e) => handleDataChange(idx, 'name', e.target.value)} placeholder="Nom (Ex: 2024)" />
-                                    <input type="number" value={point.value} onChange={(e) => handleDataChange(idx, 'value', e.target.value)} placeholder="Valeur" style={{ width: '100px' }} />
-                                    <button onClick={() => handleRemoveDataPoint(idx)} className="btn-danger btn-small" title="Supprimer">🗑️</button>
+                                <div key={idx} className="data-row">
+                                    <input className="input input-sm" type="text" value={point.name} onChange={(e) => handleDataChange(idx, 'name', e.target.value)} placeholder="ex : 2024" aria-label="Libellé" />
+                                    <input className="input input-sm tabular" type="number" value={point.value} onChange={(e) => handleDataChange(idx, 'value', e.target.value)} aria-label="Valeur" />
+                                    <button onClick={() => handleRemoveDataPoint(idx)} className="btn btn-danger-ghost btn-icon" title="Supprimer la ligne" aria-label="Supprimer la ligne">
+                                        <Trash2 size={14} />
+                                    </button>
                                 </div>
                             ))}
-                            <button onClick={handleAddDataPoint} className="btn-secondary btn-small" style={{ marginTop: '10px' }}>➕ Ajouter une ligne</button>
+                            <div>
+                                <button onClick={handleAddDataPoint} className="btn btn-ghost btn-sm"><Plus size={14} /> Ajouter une ligne</button>
+                            </div>
                         </div>
-                        
+
                         {/* Aperçu en direct */}
-                        <div style={{ backgroundColor: 'var(--bg-base)', padding: '15px', borderRadius: '8px', border: '1px dashed var(--border)' }}>
-                            <h5 style={{ margin: '0 0 15px 0', textAlign: 'center', color: 'var(--text-muted)' }}>👁️ Aperçu en direct</h5>
+                        <div className="chart-tile">
+                            <div className="section-title muted"><Eye size={14} /> Aperçu</div>
                             {renderChart(newType, newData)}
                         </div>
                     </div>
 
-                    <div style={{ marginTop: '20px', textAlign: 'right' }}>
-                        <button onClick={handleSaveChart} style={{ backgroundColor: 'var(--success)' }}>💾 Sauvegarder ce graphique</button>
+                    <div className="row row-end" style={{ marginTop: 16 }}>
+                        <button onClick={handleSaveChart} className="btn btn-success"><Save size={16} /> Enregistrer le graphique</button>
                     </div>
                 </div>
             )}
 
             {/* AFFICHAGE DES GRAPHIQUES SAUVEGARDÉS */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
-                {charts.length === 0 && !isCreating && (
-                    <p style={{ color: 'var(--text-muted)' }}>Aucun graphique personnalisé pour ce projet. Cliquez sur "Créer un graphique" pour commencer !</p>
-                )}
-                
-                {charts.map(chart => (
-                    <div key={chart.id} style={{ backgroundColor: 'var(--bg-base)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                        <h4 style={{ marginTop: 0, textAlign: 'center', color: 'var(--text-main)' }}>{chart.title}</h4>
-                        {renderChart(chart.chart_type, chart.chart_data)}
-                    </div>
-                ))}
-            </div>
+            {charts.length === 0 && !isCreating ? (
+                <div className="empty-state">
+                    <LineIcon size={32} />
+                    <p className="empty-state-title">Aucun graphique pour ce projet</p>
+                    <p>Cliquez sur « Nouveau graphique » pour commencer.</p>
+                </div>
+            ) : (
+                <div className="chart-grid">
+                    {charts.map(chart => (
+                        <div key={chart.id} className="chart-tile">
+                            <h4>{chart.title}</h4>
+                            {renderChart(chart.chart_type, chart.chart_data)}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

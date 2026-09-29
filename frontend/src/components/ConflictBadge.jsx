@@ -1,59 +1,42 @@
-import React from 'react';
+import { ShieldCheck, Flag } from 'lucide-react';
+
+// Classe de badge selon la gravité du conflit d'intérêts
+const SEVERITY_CLASS = {
+    LOW: 'badge-warning',
+    MEDIUM: 'badge-danger',
+    HIGH: 'badge-danger-strong',
+};
+
+const SEVERITY_LABEL = { LOW: 'faible', MEDIUM: 'moyen', HIGH: 'élevé' };
 
 // Composant qui prend la chaîne JSON de la BDD et affiche un badge
 const ConflictBadge = ({ conflictString }) => {
-    // 1. S'il n'y a pas encore d'analyse, on ne s'affiche pas
-    if (!conflictString) return null; 
+    // S'il n'y a pas encore d'analyse, on ne s'affiche pas
+    if (!conflictString) return <span className="muted">—</span>;
 
     let conflictData;
     try {
-        // 2. On transforme le texte de la base de données en objet JavaScript
         conflictData = JSON.parse(conflictString);
-    } catch (e) {
-        return null;
+    } catch {
+        return <span className="muted">—</span>;
     }
 
-    // 3. Cas A : L'éthique est clean
     if (!conflictData.hasConflict) {
         return (
-            <span style={{ fontSize: '0.8rem', color: '#166534', backgroundColor: '#dcfce7', padding: '2px 6px', borderRadius: '4px', marginLeft: '10px' }}>
-                ✅ Éthique validée
+            <span className="badge badge-success">
+                <ShieldCheck size={12} /> Validée
             </span>
         );
     }
 
-    // 4. Cas B : ALERTE ROUGE 🚩
-    const severityColors = {
-        LOW: { bg: '#ffedd5', text: '#c2410c', border: '#fdba74' },     // Orange clair
-        MEDIUM: { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5' },  // Rouge clair
-        HIGH: { bg: '#7f1d1d', text: '#fef2f2', border: '#ef4444' }     // Rouge foncé / Blanc
-    };
-
-    const theme = severityColors[conflictData.severity] || severityColors.MEDIUM;
+    const severity = SEVERITY_CLASS[conflictData.severity] ? conflictData.severity : 'MEDIUM';
 
     return (
-        <div style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '10px', position: 'relative' }} className="conflict-badge-container">
-            <span 
-                // Le "title" permet d'afficher l'explication du détective quand on survole avec la souris !
-                title={conflictData.details} 
-                style={{ 
-                    backgroundColor: theme.bg, 
-                    color: theme.text, 
-                    border: `1px solid ${theme.border}`,
-                    padding: '4px 8px', 
-                    borderRadius: '6px', 
-                    fontSize: '0.8rem', 
-                    fontWeight: 'bold',
-                    cursor: 'help',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                }}
-            >
-                🚩 Conflit {conflictData.severity}
-            </span>
-        </div>
+        // Le "title" affiche l'explication du détective au survol
+        <span className={`badge badge-help ${SEVERITY_CLASS[severity]}`} title={conflictData.details}>
+            <Flag size={12} /> Conflit {SEVERITY_LABEL[severity]}
+        </span>
     );
 };
 
-export default ConflictBadge; // (À retirer si tu mets ça dans le même fichier que ta liste)
+export default ConflictBadge;

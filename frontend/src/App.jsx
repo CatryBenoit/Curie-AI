@@ -27,16 +27,12 @@ function App() {
         setUser(null);
     };
 
-    if (loading) return <div className="loading">Chargement...</div>;
+    if (loading) return <div className="app-loading">Chargement...</div>;
 
-    return (
-        <div className="app-container">
-            {!user ? (
-                <Login onLogin={(userData) => setUser(userData)} />
-            ) : (
-                <Dashboard user={user} onLogout={handleLogout} />
-            )}
-        </div>
+    return !user ? (
+        <Login onLogin={(userData) => setUser(userData)} />
+    ) : (
+        <Dashboard user={user} onLogout={handleLogout} />
     );
 }
 

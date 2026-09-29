@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const UserModel = require('../../models/user.model');
+const UserModel = require('../../Models/user.model');
 
 class AuthService {
     /**
